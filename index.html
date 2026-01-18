@@ -100,7 +100,9 @@
 
         // Expose a function to show respawn overlay
         window.showRespawn = function (score) {
-            if (typeof score === 'number') {
+            if (typeof score === 'object') {
+                finalScore.textContent = `${score.message}\nYour Score: ${score.score}\nYour Rank: ${score.rank}`;
+            } else if (typeof score === 'number') {
                 finalScore.textContent = 'Your Score: ' + score;
             } else {
                 finalScore.textContent = '';

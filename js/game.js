@@ -123,6 +123,7 @@ class game {
         for (let i = 0; i < mySnake.length; i++) {
             if (mySnake[i] && typeof mySnake[i].draw === 'function') mySnake[i].draw();
         }
+        this.drawScores();
     }
     constructor(nickname) {
         this.canvas = null;
@@ -310,31 +311,51 @@ class game {
     }
 
     checkDie() {
-        for (let i = 0; i < mySnake.length; i++)
-            for (let j = 0; j < mySnake.length; j++)
-                if (i != j) {
-                    let kt = true;
-                    for (let k = 0; k < mySnake[j].v.length; k++)
-                        if (this.range(mySnake[i].v[0].x, mySnake[i].v[0].y, mySnake[j].v[k].x, mySnake[j].v[k].y) < mySnake[i].size)
-                            kt = false;
-                    if (!kt) {
+        for (let i = 0; i < mySnake.length; i++) {
+            for (let j = 0; j < mySnake.length; j++) {
+                if (i !== j) {
+                    let collision = false;
+                    for (let k = 0; k < mySnake[j].v.length; k++) {
+                        if (this.range(mySnake[i].v[0].x, mySnake[i].v[0].y, mySnake[j].v[k].x, mySnake[j].v[k].y) < mySnake[i].size) {
+                            collision = true;
+                            break;
+                        }
+                    }
+                    if (collision) {
                         for (let k = 0; k < mySnake[i].v.length; k += 5) {
                             FOOD[index] = new food(this, this.getSize() / (2 + Math.random() * 2), mySnake[i].v[k].x + Math.random() * mySnake[i].size / 2, mySnake[i].v[k].y + Math.random() * mySnake[i].size / 2);
                             FOOD[index++].value = 0.4 * mySnake[i].score / (mySnake[i].v.length / 5);
-                            if (index >= FOOD.length)
-                                index = 0;
+                            if (index >= FOOD.length) index = 0;
                         }
-                        if (i != 0)
-                            mySnake[i] = new snake(names[Math.floor(Math.random() * 99999) % names.length], this, Math.max(Math.floor((mySnake[0].score > 10 * minScore) ? mySnake[0].score / 10 : minScore), mySnake[i].score / 10), this.randomXY(XX), this.randomXY(YY));
-                        else {
-                            // Show respawn overlay instead of alert and reload
+                        if (i === 0) {
+                            // Show respawn/quit menu with killer info
+                            const killerName = mySnake[j].name;
+                            const rank = [...mySnake].sort((a, b) => b.score - a.score).findIndex(snake => snake === mySnake[i]) + 1;
                             if (window.showRespawn) {
-                                window.showRespawn(Math.floor(mySnake[i].score));
+                                window.showRespawn({
+                                    message: `You were killed by ${killerName}.`,
+                                    score: Math.floor(mySnake[i].score),
+                                    rank: rank,
+                                    killedBy: killerName
+                                });
                             }
                             die = true;
+                        } else {
+                            mySnake[i] = new snake(
+                                names[Math.floor(Math.random() * 99999) % names.length],
+                                this,
+                                Math.max(
+                                    Math.floor(mySnake[0].score > 10 * minScore ? mySnake[0].score / 10 : minScore),
+                                    mySnake[i].score / 10
+                                ),
+                                this.randomXY(XX),
+                                this.randomXY(YY)
+                            );
                         }
                     }
                 }
+            }
+        }
     }
 
     render() {
@@ -461,6 +482,37 @@ class game {
     randomXY(center) {
         // Generate a random coordinate near the given center
         return center + (Math.random() - Math.random()) * sizeMap / 2;
+    }
+
+    drawScores() {
+        // Display top 10 scores and highlight the current player's score
+        this.context.font = "16px Arial";
+        this.context.fillStyle = "white";
+        this.context.fillText("Top Scores:", 10, 20);
+
+        // Sort snakes by score in descending order
+        const sortedSnakes = [...mySnake].sort((a, b) => b.score - a.score);
+        const currentPlayer = mySnake.find(snake => snake.name === this.nickname);
+
+        let displayedCount = 0;
+        for (let i = 0; i < sortedSnakes.length && displayedCount < 10; i++) {
+            const snake = sortedSnakes[i];
+            const isCurrentPlayer = snake === currentPlayer;
+
+            // Highlight the current player's score
+            this.context.fillStyle = isCurrentPlayer ? "yellow" : "white";
+            const scoreText = `${displayedCount + 1}. ${snake.name}: ${Math.floor(snake.score)}`;
+            this.context.fillText(scoreText, 10, 40 + displayedCount * 20);
+            displayedCount++;
+        }
+
+        // Ensure the current player's score is always displayed if not in the top 10
+        if (currentPlayer && !sortedSnakes.slice(0, 10).includes(currentPlayer)) {
+            this.context.fillStyle = "yellow";
+            const currentPlayerText = `Your Score: ${currentPlayer.name}: ${Math.floor(currentPlayer.score)}`;
+            this.context.fillText("...", 10, 40 + displayedCount * 20);
+            this.context.fillText(currentPlayerText, 10, 60 + displayedCount * 20);
+        }
     }
 }
 
